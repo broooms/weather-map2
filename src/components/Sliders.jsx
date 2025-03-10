@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 
 /**
  * Sliders component for temperature and solar intensity ranges
@@ -22,64 +22,65 @@ const Sliders = ({
   onSolarMinChange, 
   onSolarMaxChange 
 }) => {
-  // Handler to ensure min doesn't exceed max
-  const handleTempMinChange = (value) => {
-    onTempMinChange(Math.min(value, tempMaxValue));
-  };
-
-  // Handler to ensure max doesn't fall below min
-  const handleTempMaxChange = (value) => {
-    onTempMaxChange(Math.max(value, tempMinValue));
-  };
-
-  // Handler to ensure min doesn't exceed max
-  const handleSolarMinChange = (value) => {
-    onSolarMinChange(Math.min(value, solarMaxValue));
-  };
-
-  // Handler to ensure max doesn't fall below min
-  const handleSolarMaxChange = (value) => {
-    onSolarMaxChange(Math.max(value, solarMinValue));
-  };
+  // Refs for the range slider containers
+  const tempRangeRef = useRef(null);
+  const solarRangeRef = useRef(null);
+  
+  // Create visual indicator for range between min and max values
+  useEffect(() => {
+    const updateRangeStyles = () => {
+      if (tempRangeRef.current) {
+        const tempMin = (tempMinValue + 20) / 140 * 100; // -20 to 120 -> 0% to 100%
+        const tempMax = (tempMaxValue + 20) / 140 * 100; // -20 to 120 -> 0% to 100%
+        tempRangeRef.current.style.setProperty('--low', `${tempMin}%`);
+        tempRangeRef.current.style.setProperty('--high', `${tempMax}%`);
+      }
+      
+      if (solarRangeRef.current) {
+        const solarMin = solarMinValue; // 0 to 100 -> 0% to 100%
+        const solarMax = solarMaxValue; // 0 to 100 -> 0% to 100%
+        solarRangeRef.current.style.setProperty('--low', `${solarMin}%`);
+        solarRangeRef.current.style.setProperty('--high', `${solarMax}%`);
+      }
+    };
+    
+    updateRangeStyles();
+  }, [tempMinValue, tempMaxValue, solarMinValue, solarMaxValue]);
 
   return (
     <div className="sliders-container">
       <div className="slider-group">
         <h3 className="slider-title">Temperature (°F)</h3>
         
-        <div className="range-slider">
-          <div className="slider-row">
-            <label htmlFor="temp-min-slider">
-              Min: {tempMinValue}°F
-            </label>
+        <div className="dual-range-slider" ref={tempRangeRef}>
+          <div className="range-track">
+            <div className="range-selected"></div>
+          </div>
+          
+          <div className="range-inputs">
             <input
               id="temp-min-slider"
               type="range"
               min="-20"
               max="120"
               value={tempMinValue}
-              onChange={(e) => handleTempMinChange(parseInt(e.target.value, 10))}
-              className="temperature-slider"
+              onChange={(e) => onTempMinChange(Math.min(parseInt(e.target.value, 10), tempMaxValue))}
+              className="range-min"
             />
-          </div>
-          
-          <div className="slider-row">
-            <label htmlFor="temp-max-slider">
-              Max: {tempMaxValue}°F
-            </label>
             <input
               id="temp-max-slider"
               type="range"
               min="-20"
               max="120"
               value={tempMaxValue}
-              onChange={(e) => handleTempMaxChange(parseInt(e.target.value, 10))}
-              className="temperature-slider"
+              onChange={(e) => onTempMaxChange(Math.max(parseInt(e.target.value, 10), tempMinValue))}
+              className="range-max"
             />
           </div>
           
-          <div className="range-display">
-            Showing regions: {tempMinValue}°F to {tempMaxValue}°F
+          <div className="range-labels">
+            <span className="range-min-label">{tempMinValue}°F</span>
+            <span className="range-max-label">{tempMaxValue}°F</span>
           </div>
         </div>
       </div>
@@ -87,39 +88,35 @@ const Sliders = ({
       <div className="slider-group">
         <h3 className="slider-title">Solar Intensity</h3>
         
-        <div className="range-slider">
-          <div className="slider-row">
-            <label htmlFor="solar-min-slider">
-              Min: {solarMinValue} ({Math.round(solarMinValue * 5)} W/m²)
-            </label>
+        <div className="dual-range-slider" ref={solarRangeRef}>
+          <div className="range-track">
+            <div className="range-selected"></div>
+          </div>
+          
+          <div className="range-inputs">
             <input
               id="solar-min-slider"
               type="range"
               min="0"
               max="100"
               value={solarMinValue}
-              onChange={(e) => handleSolarMinChange(parseInt(e.target.value, 10))}
-              className="solar-slider"
+              onChange={(e) => onSolarMinChange(Math.min(parseInt(e.target.value, 10), solarMaxValue))}
+              className="range-min"
             />
-          </div>
-          
-          <div className="slider-row">
-            <label htmlFor="solar-max-slider">
-              Max: {solarMaxValue} ({Math.round(solarMaxValue * 5)} W/m²)
-            </label>
             <input
               id="solar-max-slider"
               type="range"
               min="0"
               max="100"
               value={solarMaxValue}
-              onChange={(e) => handleSolarMaxChange(parseInt(e.target.value, 10))}
-              className="solar-slider"
+              onChange={(e) => onSolarMaxChange(Math.max(parseInt(e.target.value, 10), solarMinValue))}
+              className="range-max"
             />
           </div>
           
-          <div className="range-display">
-            Showing regions: {solarMinValue} to {solarMaxValue} ({Math.round(solarMinValue * 5)} to {Math.round(solarMaxValue * 5)} W/m²)
+          <div className="range-labels">
+            <span className="range-min-label">{solarMinValue} ({Math.round(solarMinValue * 5)} W/m²)</span>
+            <span className="range-max-label">{solarMaxValue} ({Math.round(solarMaxValue * 5)} W/m²)</span>
           </div>
         </div>
       </div>

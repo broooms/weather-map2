@@ -47,41 +47,143 @@ body {
 }
 
 .slider-title {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.8rem;
   font-weight: bold;
   text-align: center;
   color: #2c3e50; /* Dark blue color for headers */
 }
 
-.range-slider {
-  background-color: #fff;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.slider-row {
-  margin-bottom: 1rem;
-}
-
-.slider-row label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #444; /* Darker text for better readability */
-}
-
-input[type="range"] {
+/* Dual-handle range slider styles */
+.dual-range-slider {
+  position: relative;
   width: 100%;
-  height: 20px;
+  height: 70px;
+  padding: 10px 0;
+  --low: 0%;
+  --high: 100%;
 }
 
-.range-display {
-  text-align: center;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
+/* The track (line) */
+.range-track {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background-color: #ddd;
+  border-radius: 4px;
+  margin: 15px 0;
+}
+
+/* The selected portion of the track */
+.range-selected {
+  position: absolute;
+  height: 100%;
+  left: var(--low);
+  right: calc(100% - var(--high));
+  background-color: #3498db;
+  border-radius: 4px;
+}
+
+/* Container for the range inputs */
+.range-inputs {
+  position: relative;
+  width: 100%;
+}
+
+/* Style for both sliders */
+.range-inputs input[type="range"] {
+  position: absolute;
+  width: 100%;
+  top: -20px; /* Position over the track */
+  height: 20px;
+  background: none;
+  pointer-events: none; /* Make transparent to clicks by default */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  outline: none;
+}
+
+/* Enable pointer events for thumbs only */
+.range-inputs input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto; /* Allow interaction with thumb */
+}
+
+.range-inputs input[type="range"]::-moz-range-thumb {
+  pointer-events: auto; /* Firefox thumb */
+}
+
+/* Slider thumb styling */
+.range-inputs input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: #fff;
+  border: 2px solid #3498db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s ease;
+}
+
+.range-inputs input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  background: #fff;
+  border: 2px solid #3498db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: background 0.15s ease;
+}
+
+/* Thumb hover state */
+.range-inputs input[type="range"]:hover::-webkit-slider-thumb {
+  background: #eaf6ff;
+}
+
+.range-inputs input[type="range"]:hover::-moz-range-thumb {
+  background: #eaf6ff;
+}
+
+/* Active thumb */
+.range-inputs input[type="range"]:active::-webkit-slider-thumb {
+  background: #3498db;
+  border-color: #fff;
+}
+
+.range-inputs input[type="range"]:active::-moz-range-thumb {
+  background: #3498db;
+  border-color: #fff;
+}
+
+/* Make the track transparent */
+.range-inputs input[type="range"]::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 0;
+}
+
+.range-inputs input[type="range"]::-moz-range-track {
+  background: transparent;
+  height: 0;
+}
+
+/* Labels for min and max values */
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
   color: #666;
-  font-style: italic;
+  font-size: 0.9rem;
+}
+
+.range-min-label, .range-max-label {
+  display: inline-block;
+  padding: 2px 6px;
+  background-color: #f8f9fa;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-weight: 500;
 }
 
 /* Map container styling */
