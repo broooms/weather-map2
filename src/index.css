@@ -73,6 +73,15 @@ button:focus-visible {
   height: 100%;
 }
 
+/* D3 heatmap layer styling */
+.leaflet-heatmap-layer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 200; /* Above the base map tiles but below controls */
+}
+
 /* Ensure popup text is readable */
 .leaflet-popup-content {
   margin: 13px 19px;
