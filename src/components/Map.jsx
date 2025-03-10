@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, useMap, Circle, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import * as d3 from 'd3';
@@ -32,23 +32,18 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
   const heatmapRef = useRef(null);
 
   useEffect(() => {
-    // Debugging
-    console.log('HeatmapOverlay effect running with data:', data);
-    console.log('Current ranges:', { tempMinRange, tempMaxRange, solarMinRange, solarMaxRange });
+    console.log('HeatmapOverlay effect running with data:', data?.length || 0, 'points');
     
     if (!data || data.length === 0) {
-      // Clear existing heatmap if no data
       if (heatmapRef.current) {
         d3.select(heatmapRef.current).selectAll("*").remove();
       }
-      console.log('No data available to render heatmap');
       return;
     }
 
     // Initialize the SVG overlay if it doesn't exist
     if (!svgRef.current) {
       console.log('Creating SVG overlay for heatmap');
-      // Create the SVG overlay for the heatmap
       const svg = d3.select(map.getPanes().overlayPane)
         .append("svg")
         .attr("pointer-events", "none")
@@ -64,7 +59,6 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
 
     // Update the heatmap based on the current map view
     const updateHeatmap = () => {
-      console.log('Updating heatmap with', data.length, 'data points');
       const bounds = map.getBounds();
       const zoom = map.getZoom();
       
@@ -72,69 +66,58 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
       d3.select(heatmapRef.current).selectAll("*").remove();
       
       // Calculate the size of our heat cells based on zoom level
-      // A higher zoom level means smaller cells
-      const baseSize = 20; // Base size in pixels
-      const scaleFactor = Math.pow(1.5, zoom - 3); // Adjust cell size by zoom level
-      const cellSize = baseSize / scaleFactor;
+      // Start with larger cells that get smaller as we zoom in
+      const baseSize = Math.max(30, 100 / Math.pow(1.2, zoom)); // Larger cells at lower zoom levels
       
       // Filter data to points within the current map bounds
       const visibleData = data.filter(point => {
         return bounds.contains([point.lat, point.lon]);
       });
       
-      console.log('Visible data points:', visibleData.length);
+      console.log('Rendering heatmap with', visibleData.length, 'visible data points');
       
       // If no visible data, don't render
-      if (visibleData.length === 0) {
-        console.log('No visible data points within current map bounds');
-        return;
-      }
+      if (visibleData.length === 0) return;
       
       // Set up the heatmap
       const heatmapGroup = d3.select(heatmapRef.current);
+      
+      // Create a color scale based on temperature
+      const colorScale = d3.scaleSequential(d3.interpolateRdYlBu)
+        .domain([120, -20]); // Map temperature range to colors (reverse for blue=cold, red=hot)
       
       // For each data point, add a heat rectangle
       visibleData.forEach(point => {
         // Convert lat/lon to pixel coordinates
         const pixelPoint = map.latLngToLayerPoint([point.lat, point.lon]);
         
-        // Create color scales based on the range values
-        const tempScale = d3.scaleLinear()
-          .domain([tempMinRange, tempMaxRange])
-          .range([0, 1])
-          .clamp(true); // Ensure values stay within range
-          
-        const solarScale = d3.scaleLinear()
-          .domain([solarMinRange, solarMaxRange])
-          .range([0, 1])
-          .clamp(true); // Ensure values stay within range
+        // Check if point is in our ranges
+        const inTempRange = point.temp >= tempMinRange && point.temp <= tempMaxRange;
+        const inSolarRange = point.solar >= solarMinRange && point.solar <= solarMaxRange;
         
-        // Normalize the temperature and solar values within our ranges
-        const tempNorm = tempScale(point.temp);
-        const solarNorm = solarScale(point.solar);
+        // Skip points outside our ranges
+        if (!inTempRange || !inSolarRange) return;
         
-        // Create a combined value (weighted average)
-        // We'll visualize more intensely if a point is in the middle of both ranges
-        const combinedValue = (tempNorm + solarNorm) / 2;
+        // Calculate opacity based on how central the values are in our ranges
+        const tempRatio = (point.temp - tempMinRange) / (tempMaxRange - tempMinRange);
+        const solarRatio = (point.solar - solarMinRange) / (solarMaxRange - solarMinRange);
         
-        // Determine the opacity based on how well the point matches our ranges
-        // Full opacity (0.7) for perfect matches, fading to 0.1 for edge cases
-        const opacity = 0.1 + (combinedValue * 0.6);
+        // Points closer to the middle of the range are more opaque
+        const centralFactor = 1 - Math.abs(tempRatio - 0.5) * 2 * 0.5;
         
-        // Create a color scale from blue to red
-        const colorScale = d3.scaleSequential(d3.interpolateRdYlBu)
-          .domain([1, 0]); // Reversed domain for RdYlBu (blue is cold, red is hot)
+        // Base opacity on solar value
+        const opacity = 0.2 + (solarRatio * 0.6);
         
-        // Add the heat rectangle
+        // Add the heat rectangle with transition for a smoother appearance
         heatmapGroup.append("rect")
-          .attr("x", pixelPoint.x - cellSize / 2)
-          .attr("y", pixelPoint.y - cellSize / 2)
-          .attr("width", cellSize)
-          .attr("height", cellSize)
-          .attr("fill", colorScale(tempNorm)) // Color based on temperature
-          .attr("opacity", opacity) // Variable opacity based on match quality
-          .attr("rx", 2) // Slightly rounded corners
-          .attr("ry", 2);
+          .attr("x", pixelPoint.x - baseSize / 2)
+          .attr("y", pixelPoint.y - baseSize / 2)
+          .attr("width", baseSize)
+          .attr("height", baseSize)
+          .attr("fill", colorScale(point.temp))
+          .attr("opacity", opacity)
+          .attr("rx", baseSize / 5) // Slightly rounded corners
+          .attr("ry", baseSize / 5);
       });
       
       // Update SVG size to match the map
@@ -173,38 +156,6 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
 }
 
 /**
- * Fallback component to display markers when D3 heatmap fails
- */
-function DataMarkers({ data }) {
-  if (!data || data.length === 0) return null;
-  
-  console.log('Rendering fallback markers for', data.length, 'points');
-  
-  return (
-    <>
-      {data.map((point, index) => (
-        <Circle
-          key={`marker-${index}`}
-          center={[point.lat, point.lon]}
-          radius={50000} // 50km radius
-          pathOptions={{
-            fillColor: point.temp > 50 ? 'red' : 'blue',
-            fillOpacity: 0.5,
-            color: 'white',
-            weight: 1
-          }}
-        >
-          <Tooltip>
-            Temp: {point.temp.toFixed(1)}°F<br />
-            Solar: {point.solar.toFixed(1)} ({Math.round(point.solar * 5)} W/m²)
-          </Tooltip>
-        </Circle>
-      ))}
-    </>
-  );
-}
-
-/**
  * Main Map component
  * @param {Object} props - Component props
  * @param {Array} props.climateData - Climate data for display
@@ -220,26 +171,28 @@ const Map = ({
   solarMinValue, 
   solarMaxValue 
 }) => {
-  // Add state for debug options
-  const [showDebugMarkers, setShowDebugMarkers] = useState(true);
-  
-  // Debugging
-  console.log('Map rendering with', climateData ? climateData.length : 0, 'data points');
+  // State to toggle debug tools
+  const [showDebugTools, setShowDebugTools] = useState(false);
   
   return (
     <div className="map-container">
-      {/* Debug Controls */}
-      <div className="map-debug-controls">
-        <button 
-          onClick={() => setShowDebugMarkers(!showDebugMarkers)}
-          className="debug-toggle"
-        >
-          {showDebugMarkers ? 'Hide' : 'Show'} Markers
-        </button>
-        <span className="debug-data-count">
-          {climateData ? `${climateData.length} data points` : 'No data'}
-        </span>
-      </div>
+      {/* Debug panel toggle button */}
+      <button 
+        className="debug-toggle-btn" 
+        onClick={() => setShowDebugTools(!showDebugTools)}
+        style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000 }}
+      >
+        {showDebugTools ? 'Hide' : 'Show'} Debug
+      </button>
+      
+      {/* Only show debug controls when enabled */}
+      {showDebugTools && (
+        <div className="map-debug-controls">
+          <span className="debug-data-count">
+            {climateData ? `${climateData.length} data points` : 'No data'}
+          </span>
+        </div>
+      )}
       
       <MapContainer
         center={[20, 0]}
@@ -252,7 +205,7 @@ const Map = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* Use D3 heatmap overlay for visualization */}
+        {/* D3 heatmap overlay */}
         {climateData && (
           <HeatmapOverlay 
             data={climateData} 
@@ -262,9 +215,6 @@ const Map = ({
             solarMaxRange={solarMaxValue}
           />
         )}
-        
-        {/* Always show markers if debug toggle is on */}
-        {climateData && showDebugMarkers && <DataMarkers data={climateData} />}
       </MapContainer>
     </div>
   );

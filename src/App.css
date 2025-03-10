@@ -288,3 +288,48 @@ body {
   color: #333;
   margin-top: 5px;
 }
+
+/* Heatmap styling */
+.leaflet-heatmap-layer {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 400; /* Above the base map tiles but below controls */
+}
+
+/* Debug button styling */
+.debug-toggle-btn {
+  padding: 5px 10px;
+  background-color: rgba(52, 152, 219, 0.8);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.debug-toggle-btn:hover {
+  background-color: rgba(41, 128, 185, 0.9);
+}
+
+/* Debug panel toggle button */
+.debug-panel-toggle {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  padding: 5px 10px;
+  background-color: rgba(52, 152, 219, 0.7);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  z-index: 1000;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.debug-panel-toggle:hover {
+  background-color: rgba(41, 128, 185, 0.9);
+}

@@ -16,6 +16,7 @@ function App() {
   const [climateData, setClimateData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showDebugPanel, setShowDebugPanel] = useState(false) // Debug panel toggle
 
   // Fetch climate data from NASA POWER API
   useEffect(() => {
@@ -302,17 +303,27 @@ function App() {
         solarMaxValue={solarMaxValue}
       />
       
-      {/* Add debug panel */}
-      <DebugPanel state={{
-        isLoading,
-        error,
-        climateData,
-        filteredData,
-        tempMinValue,
-        tempMaxValue,
-        solarMinValue,
-        solarMaxValue
-      }} />
+      {/* Add debug panel only when showDebugPanel is true */}
+      {showDebugPanel && (
+        <DebugPanel state={{
+          isLoading,
+          error,
+          climateData,
+          filteredData,
+          tempMinValue,
+          tempMaxValue,
+          solarMinValue,
+          solarMaxValue
+        }} />
+      )}
+      
+      {/* Button to toggle debug panel */}
+      <button 
+        className="debug-panel-toggle"
+        onClick={() => setShowDebugPanel(!showDebugPanel)}
+      >
+        {showDebugPanel ? 'Hide' : 'Show'} Debug Panel
+      </button>
     </div>
   )
 }
