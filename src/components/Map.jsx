@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap, Circle, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import * as d3 from 'd3';
@@ -32,16 +32,22 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
   const heatmapRef = useRef(null);
 
   useEffect(() => {
+    // Debugging
+    console.log('HeatmapOverlay effect running with data:', data);
+    console.log('Current ranges:', { tempMinRange, tempMaxRange, solarMinRange, solarMaxRange });
+    
     if (!data || data.length === 0) {
       // Clear existing heatmap if no data
       if (heatmapRef.current) {
         d3.select(heatmapRef.current).selectAll("*").remove();
       }
+      console.log('No data available to render heatmap');
       return;
     }
 
     // Initialize the SVG overlay if it doesn't exist
     if (!svgRef.current) {
+      console.log('Creating SVG overlay for heatmap');
       // Create the SVG overlay for the heatmap
       const svg = d3.select(map.getPanes().overlayPane)
         .append("svg")
@@ -58,6 +64,7 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
 
     // Update the heatmap based on the current map view
     const updateHeatmap = () => {
+      console.log('Updating heatmap with', data.length, 'data points');
       const bounds = map.getBounds();
       const zoom = map.getZoom();
       
@@ -75,8 +82,13 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
         return bounds.contains([point.lat, point.lon]);
       });
       
+      console.log('Visible data points:', visibleData.length);
+      
       // If no visible data, don't render
-      if (visibleData.length === 0) return;
+      if (visibleData.length === 0) {
+        console.log('No visible data points within current map bounds');
+        return;
+      }
       
       // Set up the heatmap
       const heatmapGroup = d3.select(heatmapRef.current);
@@ -161,6 +173,38 @@ function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solar
 }
 
 /**
+ * Fallback component to display markers when D3 heatmap fails
+ */
+function DataMarkers({ data }) {
+  if (!data || data.length === 0) return null;
+  
+  console.log('Rendering fallback markers for', data.length, 'points');
+  
+  return (
+    <>
+      {data.map((point, index) => (
+        <Circle
+          key={`marker-${index}`}
+          center={[point.lat, point.lon]}
+          radius={50000} // 50km radius
+          pathOptions={{
+            fillColor: point.temp > 50 ? 'red' : 'blue',
+            fillOpacity: 0.5,
+            color: 'white',
+            weight: 1
+          }}
+        >
+          <Tooltip>
+            Temp: {point.temp.toFixed(1)}°F<br />
+            Solar: {point.solar.toFixed(1)} ({Math.round(point.solar * 5)} W/m²)
+          </Tooltip>
+        </Circle>
+      ))}
+    </>
+  );
+}
+
+/**
  * Main Map component
  * @param {Object} props - Component props
  * @param {Array} props.climateData - Climate data for display
@@ -176,6 +220,9 @@ const Map = ({
   solarMinValue, 
   solarMaxValue 
 }) => {
+  // Debugging
+  console.log('Map rendering with', climateData ? climateData.length : 0, 'data points');
+  
   return (
     <div className="map-container">
       <MapContainer
@@ -188,6 +235,8 @@ const Map = ({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
+        {/* Use D3 heatmap overlay for visualization */}
         {climateData && (
           <HeatmapOverlay 
             data={climateData} 
@@ -197,6 +246,9 @@ const Map = ({
             solarMaxRange={solarMaxValue}
           />
         )}
+        
+        {/* Fallback to simple markers if needed */}
+        {climateData && <DataMarkers data={climateData} />}
       </MapContainer>
     </div>
   );

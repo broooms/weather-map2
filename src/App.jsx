@@ -23,6 +23,7 @@ function App() {
     const fetchClimateData = async () => {
       try {
         setIsLoading(true);
+        console.log('Attempting to fetch NASA POWER data...');
         
         // Sample point to start - we'll expand this to multiple points in a grid
         const response = await fetch(
@@ -41,9 +42,11 @@ function App() {
         }
         
         const data = await response.json();
+        console.log('NASA POWER API response:', data);
         
         // Process the data into our required format
         const processedData = processNasaPowerData(data);
+        console.log('Processed climate data:', processedData);
         
         setClimateData(processedData);
         setIsLoading(false);
@@ -52,8 +55,10 @@ function App() {
         setError('Error fetching climate data: ' + error.message);
         setIsLoading(false);
         
+        console.log('Falling back to mock data...');
         // If API fetch fails, use mock data for development
         const mockData = generateMockClimateData();
+        console.log('Generated mock data:', mockData);
         setClimateData(mockData);
       }
     };
@@ -122,7 +127,7 @@ function App() {
     // Create a grid of points covering the globe
     const mockData = [];
     
-    // Generate a 10x10 grid of points (-90 to 90 latitude, -180 to 180 longitude)
+    // Generate a grid of points with smaller increments for better visualization
     for (let lat = -80; lat <= 80; lat += 20) {
       for (let lon = -180; lon <= 160; lon += 20) {
         // Temperature decreases from equator to poles (approximate model)
@@ -159,12 +164,15 @@ function App() {
   const filterClimateData = (data, tempMin, tempMax, solarMin, solarMax) => {
     if (!data) return [];
     
-    return data.filter(point => 
+    const filtered = data.filter(point => 
       point.temp >= tempMin && 
       point.temp <= tempMax && 
       point.solar >= solarMin && 
       point.solar <= solarMax
     );
+    
+    console.log(`Filtered data: ${filtered.length} points match criteria (from ${data.length} total points)`);
+    return filtered;
   };
 
   // Create debounced functions for slider changes (100ms delay)
@@ -222,6 +230,12 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <h1>Interactive Climate Map</h1>
+        {/* Add debugging data indicator */}
+        <small style={{ fontSize: '0.7rem', opacity: 0.8 }}>
+          {isLoading ? 'Loading...' : 
+           error ? 'Error loading data' :
+           climateData ? `${climateData.length} data points loaded` : 'No data'}
+        </small>
       </header>
       
       <Sliders 
