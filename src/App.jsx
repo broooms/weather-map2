@@ -23,6 +23,15 @@ function App() {
     const fetchClimateData = async () => {
       try {
         setIsLoading(true);
+        
+        // DEBUG: Use mock data for initial development
+        console.log('Using mock data for development...');
+        const mockData = generateMockClimateData();
+        setClimateData(mockData);
+        setIsLoading(false);
+        
+        // Comment this out to skip API call during debugging
+        /*
         console.log('Attempting to fetch NASA POWER data...');
         
         // Sample point to start - we'll expand this to multiple points in a grid
@@ -50,6 +59,7 @@ function App() {
         
         setClimateData(processedData);
         setIsLoading(false);
+        */
       } catch (error) {
         console.error('Error fetching climate data:', error);
         setError('Error fetching climate data: ' + error.message);
@@ -127,9 +137,9 @@ function App() {
     // Create a grid of points covering the globe
     const mockData = [];
     
-    // Generate a grid of points with smaller increments for better visualization
-    for (let lat = -80; lat <= 80; lat += 20) {
-      for (let lon = -180; lon <= 160; lon += 20) {
+    // Generate a denser grid of points for better visibility
+    for (let lat = -80; lat <= 80; lat += 10) {  // More density (10° increments)
+      for (let lon = -180; lon <= 170; lon += 10) {  // More density (10° increments)
         // Temperature decreases from equator to poles (approximate model)
         const baseTemp = 80 - Math.abs(lat) * 1.2;
         // Add some randomness
@@ -148,6 +158,21 @@ function App() {
         });
       }
     }
+    
+    console.log(`Generated ${mockData.length} mock data points`);
+    
+    // Add a few well-known reference points that should always be visible
+    const referencePoints = [
+      { lat: 0, lon: 0, temp: 80, solar: 90, name: "Equator" },       // Equator
+      { lat: 40, lon: -100, temp: 60, solar: 70, name: "North America" },  // North America
+      { lat: 50, lon: 10, temp: 50, solar: 60, name: "Europe" },      // Europe
+      { lat: -30, lon: 150, temp: 70, solar: 80, name: "Australia" }  // Australia
+    ];
+    
+    referencePoints.forEach(point => {
+      mockData.push(point);
+      console.log(`Added reference point: ${point.name} at ${point.lat},${point.lon}`);
+    });
     
     return mockData;
   };
@@ -226,6 +251,23 @@ function App() {
     filterClimateData(climateData, tempMinValue, tempMaxValue, solarMinValue, solarMaxValue) : 
     null;
 
+  // Debug panel to display internal state
+  function DebugPanel({ state }) {
+    return (
+      <div className="debug-panel">
+        <h3>Debug Info</h3>
+        <div className="debug-content">
+          <div><strong>Loading:</strong> {state.isLoading ? 'Yes' : 'No'}</div>
+          <div><strong>Error:</strong> {state.error || 'None'}</div>
+          <div><strong>Data Points:</strong> {state.climateData ? state.climateData.length : 0}</div>
+          <div><strong>Filtered Points:</strong> {state.filteredData ? state.filteredData.length : 0}</div>
+          <div><strong>Temperature Range:</strong> {state.tempMinValue}°F to {state.tempMaxValue}°F</div>
+          <div><strong>Solar Range:</strong> {state.solarMinValue} to {state.solarMaxValue}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -259,6 +301,18 @@ function App() {
         solarMinValue={solarMinValue}
         solarMaxValue={solarMaxValue}
       />
+      
+      {/* Add debug panel */}
+      <DebugPanel state={{
+        isLoading,
+        error,
+        climateData,
+        filteredData,
+        tempMinValue,
+        tempMaxValue,
+        solarMinValue,
+        solarMaxValue
+      }} />
     </div>
   )
 }

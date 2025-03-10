@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, useMap, Circle, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -220,11 +220,27 @@ const Map = ({
   solarMinValue, 
   solarMaxValue 
 }) => {
+  // Add state for debug options
+  const [showDebugMarkers, setShowDebugMarkers] = useState(true);
+  
   // Debugging
   console.log('Map rendering with', climateData ? climateData.length : 0, 'data points');
   
   return (
     <div className="map-container">
+      {/* Debug Controls */}
+      <div className="map-debug-controls">
+        <button 
+          onClick={() => setShowDebugMarkers(!showDebugMarkers)}
+          className="debug-toggle"
+        >
+          {showDebugMarkers ? 'Hide' : 'Show'} Markers
+        </button>
+        <span className="debug-data-count">
+          {climateData ? `${climateData.length} data points` : 'No data'}
+        </span>
+      </div>
+      
       <MapContainer
         center={[20, 0]}
         zoom={2}
@@ -247,8 +263,8 @@ const Map = ({
           />
         )}
         
-        {/* Fallback to simple markers if needed */}
-        {climateData && <DataMarkers data={climateData} />}
+        {/* Always show markers if debug toggle is on */}
+        {climateData && showDebugMarkers && <DataMarkers data={climateData} />}
       </MapContainer>
     </div>
   );
