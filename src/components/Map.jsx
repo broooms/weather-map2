@@ -21,10 +21,12 @@ L.Marker.prototype.options.icon = DefaultIcon;
  * Component to handle the D3 heatmap overlay on the Leaflet map
  * @param {Object} props - Component props
  * @param {Array} props.data - Climate data points for display
- * @param {number} props.tempRange - Temperature threshold value
- * @param {number} props.solarRange - Solar intensity threshold value
+ * @param {number} props.tempMinRange - Minimum temperature threshold
+ * @param {number} props.tempMaxRange - Maximum temperature threshold
+ * @param {number} props.solarMinRange - Minimum solar intensity threshold
+ * @param {number} props.solarMaxRange - Maximum solar intensity threshold
  */
-function HeatmapOverlay({ data, tempRange, solarRange }) {
+function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solarMaxRange }) {
   const map = useMap();
   const svgRef = useRef(null);
   const heatmapRef = useRef(null);
@@ -84,22 +86,28 @@ function HeatmapOverlay({ data, tempRange, solarRange }) {
         // Convert lat/lon to pixel coordinates
         const pixelPoint = map.latLngToLayerPoint([point.lat, point.lon]);
         
-        // Calculate color based on temperature and solar values
-        // Use a scale from blue (cold) to red (hot)
+        // Create color scales based on the range values
         const tempScale = d3.scaleLinear()
-          .domain([-20, 120]) // Temperature range from spec
-          .range([0, 1]); // Normalized value
+          .domain([tempMinRange, tempMaxRange])
+          .range([0, 1])
+          .clamp(true); // Ensure values stay within range
           
         const solarScale = d3.scaleLinear()
-          .domain([0, 100]) // Solar intensity range from spec
-          .range([0, 1]); // Normalized value
+          .domain([solarMinRange, solarMaxRange])
+          .range([0, 1])
+          .clamp(true); // Ensure values stay within range
         
-        // Normalize the temperature and solar values
+        // Normalize the temperature and solar values within our ranges
         const tempNorm = tempScale(point.temp);
         const solarNorm = solarScale(point.solar);
         
         // Create a combined value (weighted average)
+        // We'll visualize more intensely if a point is in the middle of both ranges
         const combinedValue = (tempNorm + solarNorm) / 2;
+        
+        // Determine the opacity based on how well the point matches our ranges
+        // Full opacity (0.7) for perfect matches, fading to 0.1 for edge cases
+        const opacity = 0.1 + (combinedValue * 0.6);
         
         // Create a color scale from blue to red
         const colorScale = d3.scaleSequential(d3.interpolateRdYlBu)
@@ -111,8 +119,8 @@ function HeatmapOverlay({ data, tempRange, solarRange }) {
           .attr("y", pixelPoint.y - cellSize / 2)
           .attr("width", cellSize)
           .attr("height", cellSize)
-          .attr("fill", colorScale(combinedValue))
-          .attr("opacity", 0.5) // 50% opacity as per spec
+          .attr("fill", colorScale(tempNorm)) // Color based on temperature
+          .attr("opacity", opacity) // Variable opacity based on match quality
           .attr("rx", 2) // Slightly rounded corners
           .attr("ry", 2);
       });
@@ -147,7 +155,7 @@ function HeatmapOverlay({ data, tempRange, solarRange }) {
       map.off('zoom', onMapChange);
       map.off('move', onMapChange);
     };
-  }, [map, data, tempRange, solarRange]);
+  }, [map, data, tempMinRange, tempMaxRange, solarMinRange, solarMaxRange]);
 
   return null;
 }
@@ -156,10 +164,18 @@ function HeatmapOverlay({ data, tempRange, solarRange }) {
  * Main Map component
  * @param {Object} props - Component props
  * @param {Array} props.climateData - Climate data for display
- * @param {number} props.tempValue - Temperature value from slider
- * @param {number} props.solarValue - Solar intensity value from slider
+ * @param {number} props.tempMinValue - Minimum temperature value
+ * @param {number} props.tempMaxValue - Maximum temperature value
+ * @param {number} props.solarMinValue - Minimum solar intensity value
+ * @param {number} props.solarMaxValue - Maximum solar intensity value
  */
-const Map = ({ climateData, tempValue, solarValue }) => {
+const Map = ({ 
+  climateData, 
+  tempMinValue, 
+  tempMaxValue, 
+  solarMinValue, 
+  solarMaxValue 
+}) => {
   return (
     <div className="map-container">
       <MapContainer
@@ -175,8 +191,10 @@ const Map = ({ climateData, tempValue, solarValue }) => {
         {climateData && (
           <HeatmapOverlay 
             data={climateData} 
-            tempRange={tempValue} 
-            solarRange={solarValue} 
+            tempMinRange={tempMinValue} 
+            tempMaxRange={tempMaxValue}
+            solarMinRange={solarMinValue}
+            solarMaxRange={solarMaxValue}
           />
         )}
       </MapContainer>

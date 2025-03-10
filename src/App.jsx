@@ -8,9 +8,11 @@ import { debounce } from './utils/debounce'
  * Main App component
  */
 function App() {
-  // Default values based on the guidelines
-  const [tempValue, setTempValue] = useState(50) // Default temperature in °F
-  const [solarValue, setSolarValue] = useState(50) // Default solar intensity (0-100)
+  // Initialize state with range values
+  const [tempMinValue, setTempMinValue] = useState(-10) // Default min temperature in °F
+  const [tempMaxValue, setTempMaxValue] = useState(90) // Default max temperature in °F
+  const [solarMinValue, setSolarMinValue] = useState(20) // Default min solar intensity (0-100)
+  const [solarMaxValue, setSolarMaxValue] = useState(80) // Default max solar intensity (0-100)
   const [climateData, setClimateData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -146,46 +148,75 @@ function App() {
   };
 
   /**
-   * Filter climate data based on slider values
+   * Filter climate data based on range slider values
    * @param {Array} data - Climate data array
-   * @param {number} tempThreshold - Temperature threshold from slider
-   * @param {number} solarThreshold - Solar intensity threshold from slider
+   * @param {number} tempMin - Minimum temperature threshold
+   * @param {number} tempMax - Maximum temperature threshold
+   * @param {number} solarMin - Minimum solar intensity threshold
+   * @param {number} solarMax - Maximum solar intensity threshold
    * @returns {Array} Filtered data array
    */
-  const filterClimateData = (data, tempThreshold, solarThreshold) => {
+  const filterClimateData = (data, tempMin, tempMax, solarMin, solarMax) => {
     if (!data) return [];
     
     return data.filter(point => 
-      point.temp >= tempThreshold && point.solar >= solarThreshold
+      point.temp >= tempMin && 
+      point.temp <= tempMax && 
+      point.solar >= solarMin && 
+      point.solar <= solarMax
     );
   };
 
   // Create debounced functions for slider changes (100ms delay)
-  const debouncedTempChange = useCallback(
+  const debouncedTempMinChange = useCallback(
     debounce((value) => {
-      setTempValue(value);
+      setTempMinValue(value);
     }, 100),
     []
   );
 
-  const debouncedSolarChange = useCallback(
+  const debouncedTempMaxChange = useCallback(
     debounce((value) => {
-      setSolarValue(value);
+      setTempMaxValue(value);
+    }, 100),
+    []
+  );
+
+  const debouncedSolarMinChange = useCallback(
+    debounce((value) => {
+      setSolarMinValue(value);
+    }, 100),
+    []
+  );
+
+  const debouncedSolarMaxChange = useCallback(
+    debounce((value) => {
+      setSolarMaxValue(value);
     }, 100),
     []
   );
 
   // Handle slider changes
-  const handleTempChange = (value) => {
-    debouncedTempChange(value);
+  const handleTempMinChange = (value) => {
+    debouncedTempMinChange(value);
   };
 
-  const handleSolarChange = (value) => {
-    debouncedSolarChange(value);
+  const handleTempMaxChange = (value) => {
+    debouncedTempMaxChange(value);
+  };
+
+  const handleSolarMinChange = (value) => {
+    debouncedSolarMinChange(value);
+  };
+
+  const handleSolarMaxChange = (value) => {
+    debouncedSolarMaxChange(value);
   };
 
   // Filter data based on current slider values
-  const filteredData = climateData ? filterClimateData(climateData, tempValue, solarValue) : null;
+  const filteredData = climateData ? 
+    filterClimateData(climateData, tempMinValue, tempMaxValue, solarMinValue, solarMaxValue) : 
+    null;
 
   return (
     <div className="app-container">
@@ -194,10 +225,14 @@ function App() {
       </header>
       
       <Sliders 
-        tempValue={tempValue}
-        solarValue={solarValue}
-        onTempChange={handleTempChange}
-        onSolarChange={handleSolarChange}
+        tempMinValue={tempMinValue}
+        tempMaxValue={tempMaxValue}
+        solarMinValue={solarMinValue}
+        solarMaxValue={solarMaxValue}
+        onTempMinChange={handleTempMinChange}
+        onTempMaxChange={handleTempMaxChange}
+        onSolarMinChange={handleSolarMinChange}
+        onSolarMaxChange={handleSolarMaxChange}
       />
       
       {isLoading && <div className="loading">Loading climate data...</div>}
@@ -205,8 +240,10 @@ function App() {
       
       <Map 
         climateData={filteredData}
-        tempValue={tempValue}
-        solarValue={solarValue}
+        tempMinValue={tempMinValue}
+        tempMaxValue={tempMaxValue}
+        solarMinValue={solarMinValue}
+        solarMaxValue={solarMaxValue}
       />
     </div>
   )
