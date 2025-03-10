@@ -1,8 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import React, { useState, useEffect } from 'react';
+import { MapContainer, TileLayer, Rectangle, Tooltip, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import * as d3 from 'd3';
 
 // Fix for Leaflet default marker icons
 import icon from 'leaflet/dist/images/marker-icon.png';
@@ -18,151 +17,88 @@ let DefaultIcon = L.icon({
 L.Marker.prototype.options.icon = DefaultIcon;
 
 /**
- * Component to handle the D3 heatmap overlay on the Leaflet map
- * @param {Object} props - Component props
- * @param {Array} props.data - Climate data points for display
- * @param {number} props.tempMinRange - Minimum temperature threshold
- * @param {number} props.tempMaxRange - Maximum temperature threshold
- * @param {number} props.solarMinRange - Minimum solar intensity threshold
- * @param {number} props.solarMaxRange - Maximum solar intensity threshold
+ * Component that creates grid cells based on the data
  */
-function HeatmapOverlay({ data, tempMinRange, tempMaxRange, solarMinRange, solarMaxRange }) {
+function GridLayer({ data, tempMinRange, tempMaxRange, solarMinRange, solarMaxRange }) {
+  // Only show data that falls within the selected ranges
+  const filteredData = data.filter(point => {
+    return (
+      point.temp >= tempMinRange && 
+      point.temp <= tempMaxRange && 
+      point.solar >= solarMinRange && 
+      point.solar <= solarMaxRange
+    );
+  });
+
+  console.log(`Rendering ${filteredData.length} cells out of ${data.length} total data points`);
+
+  // Create grid cell for each data point
+  return (
+    <>
+      {filteredData.map((point, index) => {
+        // Calculate cell bounds (each grid cell is 1° x 1°)
+        const bounds = [
+          [point.lat - 0.5, point.lon - 0.5], // Southwest corner
+          [point.lat + 0.5, point.lon + 0.5]  // Northeast corner
+        ];
+
+        // Calculate color based on temperature
+        // Red for hot, blue for cold
+        const normalizedTemp = (point.temp + 20) / 140; // -20 to 120 -> 0 to 1
+        const r = Math.round(255 * Math.min(1, normalizedTemp * 2)); // More red as it gets hotter
+        const b = Math.round(255 * Math.min(1, (1 - normalizedTemp) * 2)); // More blue as it gets colder
+        const g = Math.round(255 * Math.min(1, 1 - Math.abs(normalizedTemp - 0.5) * 2)); // Green in the middle
+
+        // Calculate opacity based on solar value
+        const opacity = 0.2 + ((point.solar / 100) * 0.5); // 0.2 to 0.7 opacity
+
+        return (
+          <Rectangle 
+            key={`cell-${index}`}
+            bounds={bounds}
+            pathOptions={{
+              color: 'transparent',
+              fillColor: `rgb(${r}, ${g}, ${b})`,
+              fillOpacity: opacity,
+              weight: 0.5
+            }}
+          >
+            <Tooltip>
+              Temp: {point.temp.toFixed(1)}°F<br />
+              Solar: {point.solar.toFixed(1)} ({Math.round(point.solar * 5)} W/m²)
+            </Tooltip>
+          </Rectangle>
+        );
+      })}
+    </>
+  );
+}
+
+/**
+ * Dynamic component to update when map moves/zooms
+ */
+function MapUpdater({ data, tempMinRange, tempMaxRange, solarMinRange, solarMaxRange }) {
   const map = useMap();
-  const svgRef = useRef(null);
-  const heatmapRef = useRef(null);
-
+  
+  // Ensure map covers global extent
   useEffect(() => {
-    console.log('HeatmapOverlay effect running with data:', data?.length || 0, 'points');
-    
-    if (!data || data.length === 0) {
-      if (heatmapRef.current) {
-        d3.select(heatmapRef.current).selectAll("*").remove();
-      }
-      return;
-    }
+    console.log("Map view initialized");
+    map.fitWorld();
+  }, [map]);
 
-    // Initialize the SVG overlay if it doesn't exist
-    if (!svgRef.current) {
-      console.log('Creating SVG overlay for heatmap');
-      const svg = d3.select(map.getPanes().overlayPane)
-        .append("svg")
-        .attr("pointer-events", "none")
-        .attr("class", "leaflet-heatmap-layer");
-        
-      // Add a group for the heatmap elements
-      const heatmapGroup = svg.append("g")
-        .attr("class", "heatmap-group");
-        
-      svgRef.current = svg.node();
-      heatmapRef.current = heatmapGroup.node();
-    }
-
-    // Update the heatmap based on the current map view
-    const updateHeatmap = () => {
-      const bounds = map.getBounds();
-      const zoom = map.getZoom();
-      
-      // Clear existing heatmap
-      d3.select(heatmapRef.current).selectAll("*").remove();
-      
-      // Calculate the size of our heat cells based on zoom level
-      // Start with larger cells that get smaller as we zoom in
-      const baseSize = Math.max(30, 100 / Math.pow(1.2, zoom)); // Larger cells at lower zoom levels
-      
-      // Filter data to points within the current map bounds
-      const visibleData = data.filter(point => {
-        return bounds.contains([point.lat, point.lon]);
-      });
-      
-      console.log('Rendering heatmap with', visibleData.length, 'visible data points');
-      
-      // If no visible data, don't render
-      if (visibleData.length === 0) return;
-      
-      // Set up the heatmap
-      const heatmapGroup = d3.select(heatmapRef.current);
-      
-      // Create a color scale based on temperature
-      const colorScale = d3.scaleSequential(d3.interpolateRdYlBu)
-        .domain([120, -20]); // Map temperature range to colors (reverse for blue=cold, red=hot)
-      
-      // For each data point, add a heat rectangle
-      visibleData.forEach(point => {
-        // Convert lat/lon to pixel coordinates
-        const pixelPoint = map.latLngToLayerPoint([point.lat, point.lon]);
-        
-        // Check if point is in our ranges
-        const inTempRange = point.temp >= tempMinRange && point.temp <= tempMaxRange;
-        const inSolarRange = point.solar >= solarMinRange && point.solar <= solarMaxRange;
-        
-        // Skip points outside our ranges
-        if (!inTempRange || !inSolarRange) return;
-        
-        // Calculate opacity based on how central the values are in our ranges
-        const tempRatio = (point.temp - tempMinRange) / (tempMaxRange - tempMinRange);
-        const solarRatio = (point.solar - solarMinRange) / (solarMaxRange - solarMinRange);
-        
-        // Points closer to the middle of the range are more opaque
-        const centralFactor = 1 - Math.abs(tempRatio - 0.5) * 2 * 0.5;
-        
-        // Base opacity on solar value
-        const opacity = 0.2 + (solarRatio * 0.6);
-        
-        // Add the heat rectangle with transition for a smoother appearance
-        heatmapGroup.append("rect")
-          .attr("x", pixelPoint.x - baseSize / 2)
-          .attr("y", pixelPoint.y - baseSize / 2)
-          .attr("width", baseSize)
-          .attr("height", baseSize)
-          .attr("fill", colorScale(point.temp))
-          .attr("opacity", opacity)
-          .attr("rx", baseSize / 5) // Slightly rounded corners
-          .attr("ry", baseSize / 5);
-      });
-      
-      // Update SVG size to match the map
-      const mapSize = map.getSize();
-      d3.select(svgRef.current)
-        .attr("width", mapSize.x)
-        .attr("height", mapSize.y);
-        
-      // Update SVG position to match the map
-      const origin = map.layerPointToLatLng([0, 0]);
-      const svgOrigin = map.latLngToLayerPoint(origin);
-      d3.select(heatmapRef.current)
-        .attr("transform", `translate(${-svgOrigin.x},${-svgOrigin.y})`);
-    };
-    
-    // Update heatmap on map zoom and move events
-    const onMapChange = () => {
-      updateHeatmap();
-    };
-    
-    // Initial update
-    updateHeatmap();
-    
-    // Add event listeners
-    map.on('zoom', onMapChange);
-    map.on('move', onMapChange);
-    
-    // Clean up
-    return () => {
-      map.off('zoom', onMapChange);
-      map.off('move', onMapChange);
-    };
-  }, [map, data, tempMinRange, tempMaxRange, solarMinRange, solarMaxRange]);
-
-  return null;
+  return (
+    <GridLayer 
+      data={data} 
+      tempMinRange={tempMinRange} 
+      tempMaxRange={tempMaxRange}
+      solarMinRange={solarMinRange}
+      solarMaxRange={solarMaxRange}
+    />
+  );
 }
 
 /**
  * Main Map component
- * @param {Object} props - Component props
- * @param {Array} props.climateData - Climate data for display
- * @param {number} props.tempMinValue - Minimum temperature value
- * @param {number} props.tempMaxValue - Maximum temperature value
- * @param {number} props.solarMinValue - Minimum solar intensity value
- * @param {number} props.solarMaxValue - Maximum solar intensity value
  */
 const Map = ({ 
   climateData, 
@@ -205,9 +141,9 @@ const Map = ({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         
-        {/* D3 heatmap overlay */}
-        {climateData && (
-          <HeatmapOverlay 
+        {/* Use direct Leaflet rectangles for heatmap */}
+        {climateData && climateData.length > 0 && (
+          <MapUpdater 
             data={climateData} 
             tempMinRange={tempMinValue} 
             tempMaxRange={tempMaxValue}

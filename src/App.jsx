@@ -138,9 +138,9 @@ function App() {
     // Create a grid of points covering the globe
     const mockData = [];
     
-    // Generate a denser grid of points for better visibility
-    for (let lat = -80; lat <= 80; lat += 10) {  // More density (10° increments)
-      for (let lon = -180; lon <= 170; lon += 10) {  // More density (10° increments)
+    // Generate a denser grid of points (5° increments for better visualization)
+    for (let lat = -85; lat <= 85; lat += 5) {
+      for (let lon = -180; lon <= 175; lon += 5) {
         // Temperature decreases from equator to poles (approximate model)
         const baseTemp = 80 - Math.abs(lat) * 1.2;
         // Add some randomness

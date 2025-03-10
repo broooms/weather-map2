@@ -333,3 +333,21 @@ body {
 .debug-panel-toggle:hover {
   background-color: rgba(41, 128, 185, 0.9);
 }
+
+/* Tooltip styling */
+.leaflet-tooltip {
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 12px;
+  padding: 6px 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before,
+.leaflet-tooltip-left:before,
+.leaflet-tooltip-right:before {
+  border: none !important;
+}
